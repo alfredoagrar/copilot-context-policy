@@ -1,0 +1,22 @@
+# ==============================================================================
+#  Profile: node - applied when package.json is found (outside node_modules).
+# ==============================================================================
+
+# --- [node] Committed build output --------------------------------------------
+# Bundled JavaScript actions (ncc), Storybook builds.
+**/dist/**
+**/storybook-static/**
+
+# --- [node] Package manager artifacts -----------------------------------------
+# Yarn Berry releases, zero-install cache and Plug'n'Play loaders.
+**/.yarn/releases/**
+**/.yarn/cache/**
+**/.pnp.cjs
+**/.pnp.loader.mjs
+
+# --- [node] Generated code and test snapshots ---------------------------------
+**/__generated__/**
+**/*.generated.ts
+**/*.gen.ts
+**/__snapshots__/**
+**/*.snap

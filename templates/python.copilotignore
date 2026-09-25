@@ -1,0 +1,17 @@
+# ==============================================================================
+#  Profile: python - applied when pyproject.toml, setup.py, setup.cfg,
+#  requirements.txt or Pipfile is found.
+# ==============================================================================
+
+# --- [python] Generated code --------------------------------------------------
+# protoc / grpcio-tools output.
+**/*_pb2.py
+**/*_pb2.pyi
+**/*_pb2_grpc.py
+
+# --- [python] Alembic migration history ---------------------------------------
+# Django and Flask-Migrate folders are covered by the common "migrations" rule.
+**/alembic/versions/**
+
+# --- [python] Committed virtual environments ----------------------------------
+**/site-packages/**

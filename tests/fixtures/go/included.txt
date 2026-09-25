@@ -1,0 +1,6 @@
+# Versioned paths that MUST stay visible to Copilot, even under the union of all profiles.
+go.mod
+main.go
+cmd/server/wire.go
+internal/store/store.go
+internal/parser/testdata/input.go

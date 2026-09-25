@@ -1,5 +1,5 @@
 name: Rule proposal
-description: Propose adding, narrowing or removing a .copilotignore rule.
+description: Propose adding, narrowing or removing a .copilotignore rule, or a new stack profile.
 title: "[rule] "
 body:
   - type: textarea
@@ -11,11 +11,25 @@ body:
     validations:
       required: true
   - type: dropdown
+    id: stack
+    attributes:
+      label: Profile
+      options:
+        - common
+        - dotnet
+        - node
+        - python
+        - java
+        - go
+        - New stack profile
+    validations:
+      required: true
+  - type: dropdown
     id: change
     attributes:
       label: Change type
       options:
-        - Add rule (minor version)
+        - Add rule or stack (minor version)
         - Narrow or remove rule (major version)
     validations:
       required: true

@@ -11,4 +11,4 @@ permissions:
 
 jobs:
   copilotignore:
-    uses: alfredoagrar/copilot-context-policy/.github/workflows/copilotignore-check.yml@v1
+    uses: alfredoagrar/copilot-context-policy/.github/workflows/copilotignore-check.yml@v2

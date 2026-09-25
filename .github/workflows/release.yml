@@ -17,15 +17,15 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Verify tag is on main and matches @standard-version
+      - name: Verify tag is on main and matches the policy version
         run: |
           if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
             echo "::error::Release tags must point to a commit on main."
             exit 1
           fi
-          version="$(grep -oP '@standard-version\s+\K\S+' templates/.copilotignore)"
+          version="$(jq -r .version templates/profiles.json)"
           if [[ "v${version}" != "${GITHUB_REF_NAME}" ]]; then
-            echo "::error file=templates/.copilotignore::Tag ${GITHUB_REF_NAME} does not match @standard-version ${version}."
+            echo "::error file=templates/profiles.json::Tag ${GITHUB_REF_NAME} does not match version ${version} in templates/profiles.json."
             exit 1
           fi
 

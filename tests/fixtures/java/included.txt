@@ -1,0 +1,8 @@
+# Versioned paths that MUST stay visible to Copilot, even under the union of all profiles.
+pom.xml
+build.gradle.kts
+gradle/wrapper/gradle-wrapper.properties
+src/main/java/com/acme/App.java
+src/main/java/com/acme/locale/LocaleResolver.java
+src/main/java/com/acme/migration/DataMigrationService.java
+src/main/resources/application.yml

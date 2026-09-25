@@ -1,4 +1,4 @@
-# Versioned paths the template MUST keep as Copilot context (one per line).
+# Versioned paths that MUST stay visible to Copilot, even under the union of all profiles.
 src/Api/Program.cs
 src/Api/Api.csproj
 src/Api/appsettings.json
@@ -15,3 +15,8 @@ docs/adr/0001-use-ef-core.md
 README.md
 Directory.Build.props
 global.json
+src/Domain/Vendor/VendorService.cs
+src/Domain/Vendors/Vendor.cs
+src/Domain/SeedWork/Entity.cs
+src/Api/Locale/LocaleMiddleware.cs
+build/Build.cs

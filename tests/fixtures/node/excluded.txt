@@ -1,0 +1,12 @@
+# Versioned paths the common + node profiles MUST exclude (one per line).
+dist/index.js
+dist/licenses.txt
+storybook-static/index.html
+.yarn/releases/yarn-4.5.0.cjs
+.yarn/cache/lodash-npm-4.17.21-6382451519.zip
+.pnp.cjs
+.pnp.loader.mjs
+src/__generated__/graphql.ts
+src/api/client.generated.ts
+src/api/schema.gen.ts
+src/components/__snapshots__/Button.test.tsx.snap

@@ -13,7 +13,7 @@ steps:
   - pwsh: |
       $file = Join-Path '${{ parameters.repositoryRoot }}' '.copilotignore'
       if (-not (Test-Path -LiteralPath $file -PathType Leaf)) {
-        Write-Host "##vso[task.logissue type=error].copilotignore is missing from the repository root. Run scripts/Set-CopilotIgnore.ps1 or copy templates/.copilotignore from copilot-context-policy."
+        Write-Host "##vso[task.logissue type=error].copilotignore is missing from the repository root. Run Set-CopilotIgnore.ps1 from alfredoagrar/copilot-context-policy."
         exit 1
       }
       $rules = @(Get-Content -LiteralPath $file | ForEach-Object { $_.Trim() } | Where-Object { $_ -and -not $_.StartsWith('#') })

@@ -1,0 +1,9 @@
+# Versioned paths that MUST stay visible to Copilot, even under the union of all profiles.
+pyproject.toml
+requirements.txt
+app/models.py
+app/views.py
+alembic/env.py
+app/management/commands/seed.py
+tests/conftest.py
+tests/fixtures/factories.py

@@ -1,0 +1,11 @@
+{
+  "version": "2.0.0",
+  "profiles": [
+    { "name": "common", "template": "common.copilotignore", "always": true,  "markers": [] },
+    { "name": "dotnet", "template": "dotnet.copilotignore", "always": false, "markers": ["*.sln", "*.slnx", "*.csproj", "*.fsproj", "*.vbproj"] },
+    { "name": "node",   "template": "node.copilotignore",   "always": false, "markers": ["package.json"] },
+    { "name": "python", "template": "python.copilotignore", "always": false, "markers": ["pyproject.toml", "setup.py", "setup.cfg", "requirements.txt", "Pipfile"] },
+    { "name": "java",   "template": "java.copilotignore",   "always": false, "markers": ["pom.xml", "build.gradle", "build.gradle.kts"] },
+    { "name": "go",     "template": "go.copilotignore",     "always": false, "markers": ["go.mod"] }
+  ]
+}

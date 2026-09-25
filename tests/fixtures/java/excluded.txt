@@ -1,0 +1,10 @@
+# Versioned paths the common + java profiles MUST exclude (one per line).
+gradlew
+gradlew.bat
+mvnw
+mvnw.cmd
+gradle/wrapper/gradle-wrapper.jar
+.mvn/wrapper/maven-wrapper.jar
+src/main/resources/db/migration/V1__init.sql
+src/main/resources/db/changelog/db.changelog-master.yaml
+target/generated-sources/annotations/com/acme/Order_.java
