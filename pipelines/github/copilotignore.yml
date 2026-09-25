@@ -1,0 +1,14 @@
+# Consumer workflow: copy to .github/workflows/copilotignore.yml in each repository,
+# or enforce it organization-wide with Rulesets > "Require workflows to pass before merging".
+name: copilotignore
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+
+jobs:
+  copilotignore:
+    uses: alfredoagrar/copilot-context-policy/.github/workflows/copilotignore-check.yml@v1

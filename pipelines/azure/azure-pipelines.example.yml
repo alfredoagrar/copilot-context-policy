@@ -1,0 +1,19 @@
+# Example azure-pipelines.yml for a consumer repository hosted in Azure Repos.
+# Register it as a Build validation policy on main/develop so it runs on every PR.
+trigger: none
+
+resources:
+  repositories:
+    - repository: policy
+      type: github
+      name: alfredoagrar/copilot-context-policy
+      ref: refs/tags/v1
+      endpoint: github-service-connection  # GitHub service connection in the Azure DevOps project
+
+pool:
+  vmImage: ubuntu-latest
+
+steps:
+  - checkout: self
+    fetchDepth: 1
+  - template: pipelines/azure/validate-copilotignore.steps.yml@policy

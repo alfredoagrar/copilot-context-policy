@@ -1,0 +1,38 @@
+# Versioned paths the template MUST exclude (one per line).
+src/Api/Resources/Strings.resx
+src/Api/Resources/Strings.Designer.cs
+src/Api/Resources/Strings.es.xlf
+src/Web/ClientApp/src/locales/es.json
+src/Web/ClientApp/src/i18n/en/common.json
+src/Api/wwwroot/swagger/v1/swagger.json
+src/Api/openapi.json
+src/Clients/Generated/PaymentsClient.cs
+src/Clients/PaymentsClient.g.cs
+src/Legacy/Connected Services/Svc/Reference.cs
+src/Legacy/Service References/Billing/Reference.cs
+src/WinForms/MainForm.Designer.cs
+tests/Specs/Checkout.feature.cs
+src/Legacy/Model.edmx
+src/Web/package-lock.json
+src/Web/ClientApp/yarn.lock
+src/Api/packages.lock.json
+src/Web/wwwroot/lib/jquery/jquery.js
+src/Web/wwwroot/js/site.min.js
+src/Web/wwwroot/css/site.min.css.map
+src/Infra/Migrations/20240101000000_Init.cs
+src/Infra/Migrations/AppDbContextModelSnapshot.cs
+src/Infra/CompiledModels/AppDbContextModel.cs
+data/catalog.csv
+data/events.jsonl
+src/Infra/SeedData/countries.json
+src/Infra/Data/products.data.json
+db/Scripts/PostDeployment/Countries.sql
+db/Scripts/ReferenceData/Currencies.sql
+db/seed_initial.sql
+db/prod_dump_2024.sql
+tests/Api.Tests/TestData/orders.json
+tests/Api.Tests/Fixtures/payload.json
+docs/architecture/c4.drawio
+docs/architecture/overview.svg
+docs/api/index.html
+docs/manuals/operations.pdf

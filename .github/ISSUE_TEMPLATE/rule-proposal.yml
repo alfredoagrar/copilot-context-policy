@@ -1,0 +1,28 @@
+name: Rule proposal
+description: Propose adding, narrowing or removing a .copilotignore rule.
+title: "[rule] "
+body:
+  - type: textarea
+    id: patterns
+    attributes:
+      label: Pattern(s)
+      description: gitignore-style patterns with an explicit `**/` or `/` anchor and no `!` negation.
+      render: gitignore
+    validations:
+      required: true
+  - type: dropdown
+    id: change
+    attributes:
+      label: Change type
+      options:
+        - Add rule (minor version)
+        - Narrow or remove rule (major version)
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Which versioned files does it affect, in which repositories, and roughly how large are they?
+    validations:
+      required: true

@@ -1,0 +1,93 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main, develop]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: actionlint
+        run: |
+          bash <(curl -sSfL https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash) 1.7.12
+          ./actionlint -color .github/workflows/*.yml pipelines/github/*.yml
+
+      - name: yamllint
+        run: pipx run yamllint --format github .
+
+      - name: PSScriptAnalyzer
+        shell: pwsh
+        run: |
+          if (-not (Get-Module -ListAvailable -Name PSScriptAnalyzer)) {
+            Install-Module PSScriptAnalyzer -Scope CurrentUser -Force
+          }
+          $issues = @(Invoke-ScriptAnalyzer -Path ./scripts -Recurse -Settings ./PSScriptAnalyzerSettings.psd1)
+          foreach ($issue in $issues) {
+            $level = if ($issue.Severity -eq 'Error') { 'error' } else { 'warning' }
+            "::$level file=scripts/$($issue.ScriptName),line=$($issue.Line)::$($issue.RuleName): $($issue.Message)"
+          }
+          if ($issues.Count -gt 0) { exit 1 }
+          'PSScriptAnalyzer: no issues.'
+
+  test:
+    name: Pester (${{ matrix.os }}, ${{ matrix.shell }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            shell: pwsh
+          - os: windows-latest
+            shell: pwsh
+          - os: windows-latest
+            shell: powershell   # Windows PowerShell 5.1
+    defaults:
+      run:
+        shell: ${{ matrix.shell }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install Pester 5
+        run: |
+          if (-not (Get-Module -ListAvailable -Name Pester | Where-Object { $_.Version -ge [version]'5.5.0' })) {
+            if ($PSVersionTable.PSVersion.Major -lt 6) {
+              [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+              Get-PackageProvider -Name NuGet -ForceBootstrap | Out-Null
+            }
+            Install-Module Pester -MinimumVersion 5.5.0 -Scope CurrentUser -Force -SkipPublisherCheck
+          }
+
+      - name: Run tests
+        run: |
+          Import-Module Pester -MinimumVersion 5.5.0
+          $config = New-PesterConfiguration
+          $config.Run.Path = './tests'
+          $config.Run.Exit = $true
+          $config.Output.Verbosity = 'Detailed'
+          $config.TestResult.Enabled = $true
+          $config.TestResult.OutputPath = 'testResults.xml'
+          Invoke-Pester -Configuration $config
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pester-${{ matrix.os }}-${{ matrix.shell }}
+          path: testResults.xml
+          if-no-files-found: ignore

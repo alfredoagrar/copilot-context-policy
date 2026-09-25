@@ -1,0 +1,17 @@
+# Versioned paths the template MUST keep as Copilot context (one per line).
+src/Api/Program.cs
+src/Api/Api.csproj
+src/Api/appsettings.json
+src/Api/Properties/launchSettings.json
+src/Infra/AppDbContext.cs
+src/Infra/Configurations/OrderConfiguration.cs
+src/Infra/Seeders/CountrySeeder.cs
+src/Infra/SeedData/DbInitializer.cs
+tests/Api.Tests/TestData/OrderBuilder.cs
+tests/Api.Tests/Fixtures/DatabaseFixture.cs
+db/Tables/Orders.sql
+db/StoredProcedures/usp_GetOrders.sql
+docs/adr/0001-use-ef-core.md
+README.md
+Directory.Build.props
+global.json

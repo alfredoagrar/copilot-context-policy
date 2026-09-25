@@ -1,0 +1,107 @@
+# ==============================================================================
+#  .copilotignore - Corporate standard for .NET / C# repositories
+#  @standard-version 1.0.0
+#  Source: https://github.com/alfredoagrar/copilot-context-policy
+# ------------------------------------------------------------------------------
+#  Goal: keep GitHub Copilot from using VERSIONED files as context when they
+#  burn thousands of tokens without improving suggestions.
+#
+#  Conventions (the rollout script and the CI checks depend on them):
+#   - gitignore syntax restricted to the subset that GitHub Copilot Content
+#     Exclusion (fnmatch) also understands: explicit "**/" prefix, "/**" suffix.
+#   - No "!" negations: Content Exclusion does not support them, and rules
+#     appended by a future version of this standard would override them.
+#   - Repository-specific rules go at the end, in section [6].
+# ==============================================================================
+
+# [1] Resources and translations -----------------------------------------------
+# Resource XML and XLIFF: thousands of key/value lines with no business logic.
+**/*.resx
+**/*.resw
+**/*.restext
+**/*.xlf
+**/*.xliff
+**/[Ll]ocales/**
+**/i18n/**/*.json
+
+# [2] Generated code and build artifacts ---------------------------------------
+# OpenAPI documents emitted at build time (Swashbuckle, NSwag).
+**/swagger*.json
+**/openapi*.json
+# Generated clients (NSwag, AutoRest, Connected Services, WCF).
+**/*.g.cs
+**/*.g.i.cs
+**/*.generated.cs
+**/[Gg]enerated/**
+**/Connected Services/**
+**/Service References/**
+# Designers (Resources, Settings, WinForms), SpecFlow/Reqnroll, EDMX (EF6) and
+# EF Core compiled models.
+**/*.[Dd]esigner.cs
+**/*.[Dd]esigner.vb
+**/*.feature.cs
+**/*.edmx
+**/*.edmx.diagram
+**/CompiledModels/**
+# Lock files (NuGet and front-end).
+**/packages.lock.json
+**/package-lock.json
+**/npm-shrinkwrap.json
+**/yarn.lock
+**/pnpm-lock.yaml
+# Vendored client libraries (LibMan) and minified bundles.
+**/wwwroot/lib/**
+**/*.min.js
+**/*.min.css
+**/*.js.map
+**/*.css.map
+
+# [3] Entity Framework migrations ----------------------------------------------
+# Immutable history + ModelSnapshot. The current model already lives in the
+# DbContext and in the IEntityTypeConfiguration<T> classes.
+**/[Mm]igrations/**
+
+# [4] Seed data, fixtures and data-load scripts --------------------------------
+# High-volume tabular and JSON data.
+**/*.csv
+**/*.tsv
+**/*.jsonl
+**/*.ndjson
+**/*.geojson
+**/*.data.json
+**/*[Ss]eed*.json
+# Data folders: exclude the data, NOT the C# code that loads it.
+**/[Ss]eed*/**/*.json
+**/[Ss]eed*/**/*.xml
+**/[Tt]est[Dd]ata/**/*.json
+**/[Tt]est[Dd]ata/**/*.xml
+**/[Ff]ixtures/**/*.json
+# Initial-load SQL and reference data (SSDT post-deployment, dumps).
+# Schema and stored-procedure .sql files are kept: they are code.
+**/*[Ss]eed*.sql
+**/[Ss]eed*/**/*.sql
+**/*.data.sql
+**/*[Dd]ump*.sql
+**/[Rr]eference[Dd]ata/**/*.sql
+**/[Pp]ost[Dd]eploy*/**/*.sql
+
+# [5] Heavy static documentation and diagrams ----------------------------------
+# Markdown (README, ADRs) is kept: it does help Copilot.
+**/_site/**
+**/docs/**/*.html
+**/*.pdf
+**/*.docx
+**/*.pptx
+**/*.xlsx
+**/*.vsdx
+**/*.svg
+**/*.drawio
+**/*.dio
+**/*.bpmn
+**/*.puml
+**/*.plantuml
+
+# [6] Repository-specific rules ------------------------------------------------
+# Add root-anchored paths below (e.g. /src/Legacy/big.json).
+# To opt out of a standard rule: delete it and add a line
+# "# @disable <pattern>"; Set-CopilotIgnore.ps1 will not append it again.

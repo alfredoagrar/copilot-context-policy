@@ -1,0 +1,36 @@
+# Reusable workflow: fails when .copilotignore is missing from the caller's
+# repository root or has no active rules.
+# Usage: jobs.<id>.uses: alfredoagrar/copilot-context-policy/.github/workflows/copilotignore-check.yml@v1
+name: copilotignore-check
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate .copilotignore
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: /.copilotignore
+          sparse-checkout-cone-mode: false
+
+      - name: Check .copilotignore at the repository root
+        shell: pwsh
+        run: |
+          $file = Join-Path $env:GITHUB_WORKSPACE '.copilotignore'
+          if (-not (Test-Path -LiteralPath $file -PathType Leaf)) {
+            "::error title=.copilotignore missing::No .copilotignore at the repository root. Run Set-CopilotIgnore.ps1 or copy the template from alfredoagrar/copilot-context-policy."
+            exit 1
+          }
+          $rules = @(Get-Content -LiteralPath $file | ForEach-Object { $_.Trim() } | Where-Object { $_ -and -not $_.StartsWith('#') })
+          if ($rules.Count -eq 0) {
+            "::error file=.copilotignore,title=.copilotignore empty::The file contains no active rules."
+            exit 1
+          }
+          ".copilotignore OK: $($rules.Count) active rules."

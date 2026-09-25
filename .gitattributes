@@ -1,0 +1,5 @@
+# LF everywhere (Windows PowerShell 5.1 runs LF scripts fine), so git check-ignore
+# and the tests see identical bytes on every OS.
+* text=auto eol=lf
+*.pdf binary
+*.png binary

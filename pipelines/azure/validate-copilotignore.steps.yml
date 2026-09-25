@@ -1,0 +1,26 @@
+# Azure Pipelines step template: fails pull request builds when .copilotignore
+# is missing from the repository root (or has no active rules).
+#
+# Consume it from a central repository resource; see azure-pipelines.example.yml.
+# Azure Repos ignores the YAML "pr:" trigger: PR validation comes from
+# Branch policies > Build validation on the target branch.
+parameters:
+  - name: repositoryRoot
+    type: string
+    default: $(Build.SourcesDirectory)
+
+steps:
+  - pwsh: |
+      $file = Join-Path '${{ parameters.repositoryRoot }}' '.copilotignore'
+      if (-not (Test-Path -LiteralPath $file -PathType Leaf)) {
+        Write-Host "##vso[task.logissue type=error].copilotignore is missing from the repository root. Run scripts/Set-CopilotIgnore.ps1 or copy templates/.copilotignore from copilot-context-policy."
+        exit 1
+      }
+      $rules = @(Get-Content -LiteralPath $file | ForEach-Object { $_.Trim() } | Where-Object { $_ -and -not $_.StartsWith('#') })
+      if ($rules.Count -eq 0) {
+        Write-Host "##vso[task.logissue type=error;sourcepath=.copilotignore].copilotignore exists but contains no active rules."
+        exit 1
+      }
+      Write-Host ".copilotignore OK: $($rules.Count) active rules."
+    displayName: Validate .copilotignore at the repository root
+    condition: and(succeeded(), eq(variables['Build.Reason'], 'PullRequest'))

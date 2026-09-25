@@ -1,0 +1,6 @@
+dist/
+testResults.xml
+*.log
+.DS_Store
+.vscode/
+.idea/
