@@ -1,4 +1,4 @@
-# Versioned paths the template MUST exclude (one per line).
+# Versioned paths the common + dotnet profiles MUST exclude (one per line).
 src/Api/Resources/Strings.resx
 src/Api/Resources/Strings.Designer.cs
 src/Api/Resources/Strings.es.xlf

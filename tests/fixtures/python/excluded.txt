@@ -1,0 +1,6 @@
+# Versioned paths the common + python profiles MUST exclude (one per line).
+proto/user_pb2.py
+proto/user_pb2.pyi
+proto/user_pb2_grpc.py
+alembic/versions/1a2b3c4d_add_users.py
+venv/lib/python3.12/site-packages/requests/api.py

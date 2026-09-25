@@ -1,0 +1,21 @@
+# ==============================================================================
+#  Profile: java - applied when pom.xml, build.gradle or build.gradle.kts is
+#  found (Java and Kotlin).
+# ==============================================================================
+
+# --- [java] Build wrappers ----------------------------------------------------
+# Generated boilerplate scripts and binaries; wrapper *.properties are kept.
+**/gradlew
+**/gradlew.bat
+**/mvnw
+**/mvnw.cmd
+**/gradle-wrapper.jar
+**/maven-wrapper.jar
+
+# --- [java] Database migration history (Flyway, Liquibase) --------------------
+**/db/migration/**
+**/db/changelog/**
+
+# --- [java] Committed generated sources ---------------------------------------
+**/generated-sources/**
+**/generated-test-sources/**

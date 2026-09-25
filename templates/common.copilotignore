@@ -1,0 +1,84 @@
+# ==============================================================================
+#  Profile: common - applies to every repository, whatever its stack.
+#  Composed by scripts/Set-CopilotIgnore.ps1 (see profiles.json).
+#  Content Exclusion applies the union of all profiles to every repository,
+#  case-insensitively: each rule must be safe for every stack.
+# ==============================================================================
+
+# --- [common] Lock files ------------------------------------------------------
+# Machine-written dependency graphs; the manifests next to them are what matter.
+**/package-lock.json
+**/npm-shrinkwrap.json
+**/yarn.lock
+**/pnpm-lock.yaml
+**/bun.lock
+**/packages.lock.json
+**/poetry.lock
+**/Pipfile.lock
+**/uv.lock
+**/pdm.lock
+**/go.sum
+**/Cargo.lock
+**/composer.lock
+**/Gemfile.lock
+**/gradle.lockfile
+**/.terraform.lock.hcl
+
+# --- [common] Minified bundles and source maps --------------------------------
+**/*.min.js
+**/*.min.css
+**/*.js.map
+**/*.css.map
+
+# --- [common] Generated API descriptions and generated-code folders -----------
+**/swagger*.json
+**/openapi*.json
+**/[Gg]enerated/**
+
+# --- [common] Localization catalogs -------------------------------------------
+**/*.xlf
+**/*.xliff
+**/*.po
+**/*.pot
+**/[Ll]ocales/**
+**/i18n/**/*.json
+
+# --- [common] Database migration history --------------------------------------
+# EF Core, Django, Laravel, TypeORM, Knex... The current model lives elsewhere.
+**/[Mm]igrations/**
+
+# --- [common] Seed data, fixtures and bulk data -------------------------------
+# Exclude the data, NOT the code that loads it.
+**/*.csv
+**/*.tsv
+**/*.jsonl
+**/*.ndjson
+**/*.geojson
+**/*.data.json
+**/*[Ss]eed*.json
+**/[Ss]eed*/**/*.json
+**/[Ss]eed*/**/*.xml
+**/[Tt]est[Dd]ata/**/*.json
+**/[Tt]est[Dd]ata/**/*.xml
+**/[Ff]ixtures/**/*.json
+**/*[Ss]eed*.sql
+**/[Ss]eed*/**/*.sql
+**/*.data.sql
+**/*[Dd]ump*.sql
+**/[Rr]eference[Dd]ata/**/*.sql
+
+# --- [common] Heavy documentation and diagrams --------------------------------
+# Markdown (README, ADRs) is kept: it does help Copilot.
+**/_site/**
+**/docs/**/*.html
+**/*.pdf
+**/*.docx
+**/*.pptx
+**/*.xlsx
+**/*.vsdx
+**/*.svg
+**/*.drawio
+**/*.dio
+**/*.bpmn
+**/*.puml
+**/*.plantuml

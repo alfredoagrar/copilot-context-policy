@@ -1,6 +1,6 @@
 # Reusable workflow: fails when .copilotignore is missing from the caller's
 # repository root or has no active rules.
-# Usage: jobs.<id>.uses: alfredoagrar/copilot-context-policy/.github/workflows/copilotignore-check.yml@v1
+# Usage: jobs.<id>.uses: alfredoagrar/copilot-context-policy/.github/workflows/copilotignore-check.yml@v2
 name: copilotignore-check
 
 on:
@@ -25,7 +25,7 @@ jobs:
         run: |
           $file = Join-Path $env:GITHUB_WORKSPACE '.copilotignore'
           if (-not (Test-Path -LiteralPath $file -PathType Leaf)) {
-            "::error title=.copilotignore missing::No .copilotignore at the repository root. Run Set-CopilotIgnore.ps1 or copy the template from alfredoagrar/copilot-context-policy."
+            "::error title=.copilotignore missing::No .copilotignore at the repository root. Run Set-CopilotIgnore.ps1 from alfredoagrar/copilot-context-policy."
             exit 1
           }
           $rules = @(Get-Content -LiteralPath $file | ForEach-Object { $_.Trim() } | Where-Object { $_ -and -not $_.StartsWith('#') })

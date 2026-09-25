@@ -7,7 +7,7 @@ resources:
     - repository: policy
       type: github
       name: alfredoagrar/copilot-context-policy
-      ref: refs/tags/v1
+      ref: refs/tags/v2
       endpoint: github-service-connection  # GitHub service connection in the Azure DevOps project
 
 pool:

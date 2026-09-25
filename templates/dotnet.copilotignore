@@ -1,0 +1,32 @@
+# ==============================================================================
+#  Profile: dotnet - applied when *.sln, *.slnx, *.csproj, *.fsproj or *.vbproj
+#  files are found.
+# ==============================================================================
+
+# --- [dotnet] Resources -------------------------------------------------------
+# Resource XML: thousands of key/value lines with no business logic.
+**/*.resx
+**/*.resw
+**/*.restext
+
+# --- [dotnet] Generated code --------------------------------------------------
+# NSwag/AutoRest clients, Connected Services, WCF, designers (Resources,
+# Settings, WinForms), SpecFlow/Reqnroll, EDMX (EF6), EF Core compiled models.
+**/*.g.cs
+**/*.g.i.cs
+**/*.generated.cs
+**/Connected Services/**
+**/Service References/**
+**/*.[Dd]esigner.cs
+**/*.[Dd]esigner.vb
+**/*.feature.cs
+**/*.edmx
+**/*.edmx.diagram
+**/CompiledModels/**
+
+# --- [dotnet] Vendored client libraries (LibMan) ------------------------------
+**/wwwroot/lib/**
+
+# --- [dotnet] SSDT post-deployment data scripts -------------------------------
+# Schema and stored-procedure .sql files are kept: they are code.
+**/[Pp]ost[Dd]eploy*/**/*.sql

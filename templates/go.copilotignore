@@ -1,0 +1,18 @@
+# ==============================================================================
+#  Profile: go - applied when go.mod is found.
+# ==============================================================================
+
+# --- [go] Vendored modules ----------------------------------------------------
+# Go files only: Content Exclusion is case-insensitive, and a "Vendor" domain
+# folder in another stack must stay visible.
+**/vendor/**/*.go
+**/vendor/modules.txt
+
+# --- [go] Generated code ------------------------------------------------------
+# protoc, grpc-gateway, controller-gen, mockgen, wire.
+**/*.pb.go
+**/*.pb.gw.go
+**/zz_generated*.go
+**/mock_*.go
+**/*_mock.go
+**/wire_gen.go

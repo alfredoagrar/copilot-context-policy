@@ -1,0 +1,12 @@
+# Versioned paths that MUST stay visible to Copilot, even under the union of all profiles.
+README.md
+docs/adr/0001-record-architecture-decisions.md
+Makefile
+Dockerfile
+docker-compose.yml
+.editorconfig
+.github/workflows/ci.yml
+infra/main.bicep
+infra/main.tf
+scripts/deploy.sh
+db/Tables/Orders.sql

@@ -1,12 +1,14 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-    Injects or updates the corporate .copilotignore standard in .NET repositories.
+    Injects or updates the copilot-context-policy .copilotignore in Git repositories.
 
 .DESCRIPTION
     - Discovers Git repositories under -RootPath and/or takes explicit roots (-RepositoryPath or pipeline).
-    - Only processes the root of .NET repositories (*.sln, *.slnx, *.csproj, *.fsproj, *.vbproj).
-    - Missing file: created from the template with FileMode.CreateNew (never replaces an existing file).
+    - Composes the file from stack profiles declared in templates/profiles.json: 'common' always applies,
+      and every other profile (dotnet, node, python, java, go, ...) applies when one of its marker files
+      is found in the repository, or when it is forced with -Stack.
+    - Missing file: created with FileMode.CreateNew (never replaces an existing file).
     - Existing file: nothing is rewritten; only the missing rules are appended, preserving the file's
       encoding (BOM / UTF-16) and line endings. Idempotent.
     - Honors local opt-outs declared as '# @disable <pattern>'.
@@ -20,17 +22,22 @@
     Explicit repository roots. Accepts pipeline input (strings or DirectoryInfo). Blank lines and lines
     starting with '#' are ignored, so a plain repos.txt file can be piped in.
 
-.PARAMETER TemplatePath
-    Template to apply. Defaults to ../templates/.copilotignore relative to this script.
+.PARAMETER Stack
+    Profiles to apply instead of auto-detection (for example: dotnet, node). 'common' is always applied.
+    Also restricts -ContentExclusionOutFile to these profiles.
+
+.PARAMETER TemplateDirectory
+    Folder that holds profiles.json and the profile templates. Defaults to ../templates relative to this script.
 
 .PARAMETER DiscoveryDepth
     Maximum folder depth below -RootPath where repositories are searched for.
 
-.PARAMETER ProjectSearchDepth
-    Maximum folder depth inside a repository where .NET project files are searched for.
+.PARAMETER StackSearchDepth
+    Maximum folder depth inside a repository where stack marker files are searched for.
 
 .PARAMETER ContentExclusionOutFile
-    Also writes the organization-level GitHub Copilot Content Exclusion YAML generated from the template.
+    Also writes the organization-level GitHub Copilot Content Exclusion YAML: the union of all profiles
+    (or of -Stack), because Content Exclusion applies it to every repository.
 
 .PARAMETER PassThru
     Emits one result object per repository.
@@ -40,6 +47,9 @@
 
 .EXAMPLE
     Get-Content .\repos.txt | ./Set-CopilotIgnore.ps1 -PassThru | Export-Csv .\rollout.csv -NoTypeInformation
+
+.EXAMPLE
+    ./Set-CopilotIgnore.ps1 -RepositoryPath C:\src\portal -Stack dotnet, node
 
 .EXAMPLE
     ./Set-CopilotIgnore.ps1 -ContentExclusionOutFile .\content-exclusion.org.yml
@@ -56,13 +66,15 @@ param(
     [Alias('FullName')]
     [string[]] $RepositoryPath,
 
-    [string] $TemplatePath,
+    [string[]] $Stack,
+
+    [string] $TemplateDirectory,
 
     [ValidateRange(0, 10)]
     [int] $DiscoveryDepth = 2,
 
     [ValidateRange(0, 10)]
-    [int] $ProjectSearchDepth = 4,
+    [int] $StackSearchDepth = 4,
 
     [string] $ContentExclusionOutFile,
 
@@ -74,14 +86,12 @@ begin {
     $ErrorActionPreference = 'Stop'
 
     $FileName  = '.copilotignore'
+    $SourceUrl = 'https://github.com/alfredoagrar/copilot-context-policy'
     $Utf8NoBom = [System.Text.UTF8Encoding]::new($false)
-    $ProjectExtensions = [System.Collections.Generic.HashSet[string]]::new(
-        [string[]]@('.sln', '.slnx', '.csproj', '.fsproj', '.vbproj'),
-        [System.StringComparer]::OrdinalIgnoreCase)
-    $SkipDirs = [System.Collections.Generic.HashSet[string]]::new(
+    $SkipDirs  = [System.Collections.Generic.HashSet[string]]::new(
         [string[]]@('.git', '.vs', '.idea', 'bin', 'obj', 'node_modules', 'packages', 'TestResults', 'artifacts'),
         [System.StringComparer]::OrdinalIgnoreCase)
-    Write-Verbose "Discovery depth: $DiscoveryDepth; project search depth: $ProjectSearchDepth"
+    Write-Verbose "Discovery depth: $DiscoveryDepth; stack search depth: $StackSearchDepth"
 
     function Test-IsRule([string] $Line) {
         $t = $Line.Trim()
@@ -114,23 +124,52 @@ begin {
         }
     }
 
-    function Test-DotNetRepository([string] $Path) {
-        # Depth-bounded BFS that stops at the first project file.
+    function Get-RepositoryStack([string] $Path) {
+        # Depth-bounded BFS over file names; stops early once every profile has been detected.
+        $found = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
         $queue = [System.Collections.Generic.Queue[object]]::new()
         $queue.Enqueue(@($Path, 0))
-        while ($queue.Count -gt 0) {
+        while ($queue.Count -gt 0 -and $found.Count -lt $DetectableCount) {
             $dir, $depth = $queue.Dequeue()
             try {
                 foreach ($file in [System.IO.Directory]::EnumerateFiles($dir)) {
-                    if ($ProjectExtensions.Contains([System.IO.Path]::GetExtension($file))) { return $true }
+                    $name = [System.IO.Path]::GetFileName($file)
+                    foreach ($stackProfile in $Profiles) {
+                        if ($stackProfile.Always -or $found.Contains($stackProfile.Name)) { continue }
+                        foreach ($marker in $stackProfile.Markers) {
+                            if ($name -like $marker) { [void]$found.Add($stackProfile.Name); break }
+                        }
+                    }
                 }
             }
             catch { Write-Verbose "Skipping '$dir': $($_.Exception.Message)" }
-            if ($depth -lt $ProjectSearchDepth) {
+            if ($depth -lt $StackSearchDepth) {
                 foreach ($sub in (Get-ChildDirectory $dir)) { $queue.Enqueue(@($sub, ($depth + 1))) }
             }
         }
-        return $false
+        return @($found)
+    }
+
+    function Select-StackProfile([string[]] $Names) {
+        # 'always' profiles plus the requested ones, in manifest order.
+        @($Profiles | Where-Object { $_.Always -or ($Names -contains $_.Name) })
+    }
+
+    function Read-ProfileTemplate([string] $Path) {
+        $lines   = [System.IO.File]::ReadAllLines($Path, $Utf8NoBom)
+        $blocks  = [System.Collections.Generic.List[object]]::new()
+        $current = [System.Collections.Generic.List[string]]::new()
+        foreach ($line in $lines) {
+            if ($line.Trim().Length -eq 0) {
+                if ($current.Count -gt 0) { $blocks.Add($current.ToArray()); $current.Clear() }
+            }
+            else { $current.Add($line) }
+        }
+        if ($current.Count -gt 0) { $blocks.Add($current.ToArray()) }
+        # The leading comment-only block documents the template file itself and is not copied.
+        if ($blocks.Count -gt 0 -and @($blocks[0] | Where-Object { Test-IsRule $_ }).Count -eq 0) { $blocks.RemoveAt(0) }
+        $rules = @($lines | Where-Object { Test-IsRule $_ } | ForEach-Object { $_.Trim() })
+        return [pscustomobject]@{ Blocks = $blocks.ToArray(); Rules = $rules }
     }
 
     function Read-TextFile([string] $Path) {
@@ -160,22 +199,51 @@ begin {
         return , $set   # the comma stops PowerShell from enumerating the HashSet
     }
 
-    function Get-MissingBlock([System.Collections.Generic.HashSet[string]] $ExistingRules) {
-        # Walks the template block by block (blocks are separated by blank lines) and keeps a
-        # block's comments only when at least one of its rules is missing.
+    function Get-NewFileText([object[]] $Selected) {
+        $names = ($Selected | ForEach-Object { $_.Name }) -join ', '
+        $sb = [System.Text.StringBuilder]::new()
+        $header = @(
+            '# =============================================================================='
+            "#  .copilotignore - copilot-context-policy $PolicyVersion"
+            "#  Stacks: $names"
+            "#  Source: $SourceUrl"
+            '# ------------------------------------------------------------------------------'
+            '#  Keeps GitHub Copilot from using versioned files that burn tokens without'
+            '#  improving suggestions. Rules use the gitignore subset that Copilot Content'
+            '#  Exclusion also understands: explicit "**/" or "/" anchor, no "!" negation.'
+            '#  Set-CopilotIgnore.ps1 only appends missing rules. To opt out of a rule,'
+            '#  delete it and add a line "# @disable <pattern>".'
+            '# ==============================================================================')
+        foreach ($line in $header) { [void]$sb.Append($line).Append("`n") }
+        foreach ($stackProfile in $Selected) {
+            foreach ($block in $stackProfile.Blocks) {
+                [void]$sb.Append("`n")
+                foreach ($line in $block) { [void]$sb.Append($line).Append("`n") }
+            }
+        }
+        [void]$sb.Append("`n# --- Repository-specific rules -------------------------------------------------`n")
+        [void]$sb.Append("# Add root-anchored paths below (e.g. /src/Legacy/big.json).`n")
+        return $sb.ToString()
+    }
+
+    function Get-MissingBlock([object[]] $Selected, [System.Collections.Generic.HashSet[string]] $ExistingRules) {
+        # Walks the selected templates block by block (blocks are separated by blank lines) and keeps
+        # a block's comments only when at least one of its rules is missing.
         $lines = [System.Collections.Generic.List[string]]::new()
         $added = 0
-        foreach ($block in $TemplateBlocks) {
-            $pending = @($block | Where-Object { (Test-IsRule $_) -and -not $ExistingRules.Contains($_.Trim()) })
-            if ($pending.Count -eq 0) { continue }
-            foreach ($line in $block) {
-                if (Test-IsRule $line) {
-                    if (-not $ExistingRules.Add($line.Trim())) { continue }   # already present
-                    $added++
+        foreach ($stackProfile in $Selected) {
+            foreach ($block in $stackProfile.Blocks) {
+                $pending = @($block | Where-Object { (Test-IsRule $_) -and -not $ExistingRules.Contains($_.Trim()) })
+                if ($pending.Count -eq 0) { continue }
+                foreach ($line in $block) {
+                    if (Test-IsRule $line) {
+                        if (-not $ExistingRules.Add($line.Trim())) { continue }   # already present
+                        $added++
+                    }
+                    $lines.Add($line)
                 }
-                $lines.Add($line)
+                $lines.Add('')
             }
-            $lines.Add('')
         }
         if ($lines.Count -gt 0) { $lines.RemoveAt($lines.Count - 1) }
         return [pscustomobject]@{ Lines = $lines.ToArray(); Count = $added }
@@ -184,30 +252,32 @@ begin {
     function Get-RepositoryPlan([string] $Path) {
         # Decides what to do with a repository without touching the disk.
         $plan = [pscustomobject]@{
-            Status = ''; Target = $null; Mode = $null; Text = $null; Encoding = $null
-            Operation = $null; RulesAdded = 0; Detail = "Standard $StandardVersion"
+            Status = ''; Stacks = ''; Target = $null; Mode = $null; Text = $null; Encoding = $null
+            Operation = $null; RulesAdded = 0; Detail = "Policy $PolicyVersion"
         }
 
         if (-not (Test-GitRoot $Path)) {
             $plan.Status = 'Skipped'; $plan.Detail = 'Not a Git repository root'
             return $plan
         }
-        if (-not (Test-DotNetRepository $Path)) {
-            $plan.Status = 'Skipped'; $plan.Detail = 'No .NET projects found'
-            return $plan
-        }
+
+        $names    = if ($Stack) { @($Stack) } else { @(Get-RepositoryStack $Path) }
+        $selected = @(Select-StackProfile $names)
+        $plan.Stacks = ($selected | ForEach-Object { $_.Name }) -join ','
 
         $plan.Target = [System.IO.Path]::Combine($Path, $FileName)
         if ([System.IO.Directory]::Exists($plan.Target)) { throw "'$($plan.Target)' is a directory." }
 
         if (-not [System.IO.File]::Exists($plan.Target)) {
-            $plan.Status = 'Created'; $plan.Mode = 'CreateNew'; $plan.Operation = 'Create from template'
-            $plan.Text = $TemplateText; $plan.Encoding = $Utf8NoBom; $plan.RulesAdded = $TemplateRules.Count
+            $distinct = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+            foreach ($stackProfile in $selected) { foreach ($rule in $stackProfile.Rules) { [void]$distinct.Add($rule) } }
+            $plan.Status = 'Created'; $plan.Mode = 'CreateNew'; $plan.Operation = "Create ($($plan.Stacks))"
+            $plan.Text = Get-NewFileText -Selected $selected; $plan.Encoding = $Utf8NoBom; $plan.RulesAdded = $distinct.Count
             return $plan
         }
 
         $existing = Read-TextFile $plan.Target
-        $missing  = Get-MissingBlock (ConvertTo-RuleSet $existing.Text)
+        $missing  = Get-MissingBlock -Selected $selected -ExistingRules (ConvertTo-RuleSet $existing.Text)
         if ($missing.Count -eq 0) {
             $plan.Status = 'UpToDate'
             return $plan
@@ -219,42 +289,46 @@ begin {
             if (-not $existing.Text.EndsWith("`n")) { [void]$sb.Append($eol) }
             [void]$sb.Append($eol)
         }
-        [void]$sb.Append("# >>> copilotignore-standard $StandardVersion | $(Get-Date -Format 'yyyy-MM-dd') | appended by Set-CopilotIgnore.ps1 >>>").Append($eol)
+        [void]$sb.Append("# >>> copilot-context-policy $PolicyVersion [$($plan.Stacks)] | $(Get-Date -Format 'yyyy-MM-dd') | appended by Set-CopilotIgnore.ps1 >>>").Append($eol)
         foreach ($line in $missing.Lines) { [void]$sb.Append($line).Append($eol) }
-        [void]$sb.Append('# <<< copilotignore-standard <<<').Append($eol)
+        [void]$sb.Append('# <<< copilot-context-policy <<<').Append($eol)
 
-        $plan.Status = 'Updated'; $plan.Mode = 'Append'; $plan.Operation = "Append $($missing.Count) missing rule(s)"
+        $plan.Status = 'Updated'; $plan.Mode = 'Append'; $plan.Operation = "Append $($missing.Count) missing rule(s) ($($plan.Stacks))"
         $plan.Text = $sb.ToString(); $plan.Encoding = $existing.Encoding; $plan.RulesAdded = $missing.Count
         return $plan
     }
 
-    # --- Load and validate the template ----------------------------------------------------
-    if (-not $TemplatePath) {
-        if (-not $PSScriptRoot) { throw 'Cannot resolve the script location; pass -TemplatePath.' }
-        $TemplatePath = Join-Path (Split-Path -Parent $PSScriptRoot) 'templates/.copilotignore'
+    # --- Load and validate the profile manifest and templates ------------------------------
+    if (-not $TemplateDirectory) {
+        if (-not $PSScriptRoot) { throw 'Cannot resolve the script location; pass -TemplateDirectory.' }
+        $TemplateDirectory = Join-Path (Split-Path -Parent $PSScriptRoot) 'templates'
     }
-    if (-not (Test-Path -LiteralPath $TemplatePath -PathType Leaf)) { throw "Template not found: $TemplatePath" }
+    $manifestPath = Join-Path $TemplateDirectory 'profiles.json'
+    if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) { throw "Profile manifest not found: $manifestPath" }
+    $manifestFile = (Resolve-Path -LiteralPath $manifestPath).ProviderPath
+    $manifest     = [System.IO.File]::ReadAllText($manifestFile, $Utf8NoBom) | ConvertFrom-Json
+    $PolicyVersion = [string]$manifest.version
 
-    $templateFile  = (Resolve-Path -LiteralPath $TemplatePath).ProviderPath
-    $templateLines = [System.IO.File]::ReadAllLines($templateFile, $Utf8NoBom)
-    $TemplateText  = ($templateLines -join "`n") + "`n"
-    $TemplateRules = @($templateLines | Where-Object { Test-IsRule $_ } | ForEach-Object { $_.Trim() })
-    if ($TemplateRules.Count -eq 0) { throw "Template '$templateFile' contains no rules." }
-
-    $StandardVersion = 'unversioned'
-    foreach ($line in $templateLines) {
-        if ($line -match '^\s*#\s*@standard-version\s+(\S+)') { $StandardVersion = $Matches[1]; break }
-    }
-
-    $TemplateBlocks = [System.Collections.Generic.List[object]]::new()
-    $current = [System.Collections.Generic.List[string]]::new()
-    foreach ($line in $templateLines) {
-        if ($line.Trim().Length -eq 0) {
-            if ($current.Count -gt 0) { $TemplateBlocks.Add($current.ToArray()); $current.Clear() }
+    $Profiles = @(foreach ($entry in $manifest.profiles) {
+        $templateFile = Join-Path (Split-Path -Parent $manifestFile) ([string]$entry.template)
+        if (-not (Test-Path -LiteralPath $templateFile -PathType Leaf)) { throw "Template for profile '$($entry.name)' not found: $templateFile" }
+        $template = Read-ProfileTemplate $templateFile
+        if ($template.Rules.Count -eq 0) { throw "Template '$templateFile' contains no rules." }
+        [pscustomobject]@{
+            Name    = [string]$entry.name
+            Always  = [bool]$entry.always
+            Markers = @($entry.markers)
+            Blocks  = $template.Blocks
+            Rules   = $template.Rules
         }
-        else { $current.Add($line) }
+    })
+    if ($Profiles.Count -eq 0) { throw "No profiles declared in $manifestFile." }
+    $DetectableCount = @($Profiles | Where-Object { -not $_.Always }).Count
+
+    $knownStacks = @($Profiles | ForEach-Object { $_.Name })
+    foreach ($name in @($Stack)) {
+        if ($name -and $knownStacks -notcontains $name) { throw "Unknown stack '$name'. Known stacks: $($knownStacks -join ', ')." }
     }
-    if ($current.Count -gt 0) { $TemplateBlocks.Add($current.ToArray()) }
 
     $pendingPaths = [System.Collections.Generic.List[string]]::new()
 }
@@ -269,17 +343,24 @@ process {
 end {
     # --- Optional export to the official mechanism (GitHub Copilot Content Exclusion) -----
     if ($ContentExclusionOutFile) {
+        $exported = if ($Stack) { @(Select-StackProfile @($Stack)) } else { $Profiles }
+        $rules = [System.Collections.Generic.List[string]]::new()
+        $seenRules = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+        foreach ($stackProfile in $exported) {
+            foreach ($rule in $stackProfile.Rules) { if ($seenRules.Add($rule)) { $rules.Add($rule) } }
+        }
+
         $outFile = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($ContentExclusionOutFile)
         $yaml = [System.Text.StringBuilder]::new()
-        [void]$yaml.Append("# GitHub Copilot > Content exclusion (organization level). Standard $StandardVersion.`n")
-        [void]$yaml.Append("# Generated by Set-CopilotIgnore.ps1 from the $FileName template. Do not edit by hand.`n")
+        [void]$yaml.Append("# GitHub Copilot > Content exclusion (organization level). copilot-context-policy $PolicyVersion.`n")
+        [void]$yaml.Append("# Stacks: $(($exported | ForEach-Object { $_.Name }) -join ', '). Generated by Set-CopilotIgnore.ps1; do not edit by hand.`n")
         [void]$yaml.Append("`"*`":`n")
-        foreach ($rule in $TemplateRules) {
+        foreach ($rule in $rules) {
             [void]$yaml.Append('  - "').Append($rule.Replace('\', '\\').Replace('"', '\"')).Append("`"`n")
         }
         if ($PSCmdlet.ShouldProcess($outFile, 'Write Content Exclusion YAML')) {
             [System.IO.File]::WriteAllText($outFile, $yaml.ToString(), $Utf8NoBom)
-            Write-Host "Content Exclusion YAML: $outFile ($($TemplateRules.Count) rules)"
+            Write-Host "Content Exclusion YAML: $outFile ($($rules.Count) rules)"
         }
     }
 
@@ -313,15 +394,19 @@ end {
                 }
                 else { $status = 'WhatIf' }
             }
-            $results.Add([pscustomobject]@{ Repository = $repo; Status = $status; RulesAdded = $plan.RulesAdded; Detail = $plan.Detail })
+            $results.Add([pscustomobject]@{
+                Repository = $repo; Status = $status; Stacks = $plan.Stacks; RulesAdded = $plan.RulesAdded; Detail = $plan.Detail
+            })
         }
         catch {
             Write-Warning "[$candidate] $($_.Exception.Message)"
-            $results.Add([pscustomobject]@{ Repository = $candidate; Status = 'Failed'; RulesAdded = 0; Detail = $_.Exception.Message })
+            $results.Add([pscustomobject]@{
+                Repository = $candidate; Status = 'Failed'; Stacks = ''; RulesAdded = 0; Detail = $_.Exception.Message
+            })
         }
     }
 
-    $results | Format-Table -AutoSize -Wrap Repository, Status, RulesAdded, Detail | Out-String -Width 4096 | Write-Host
+    $results | Format-Table -AutoSize -Wrap Repository, Status, Stacks, RulesAdded, Detail | Out-String -Width 4096 | Write-Host
     $summary = ($results | Group-Object Status | Sort-Object Name | ForEach-Object { "$($_.Name)=$($_.Count)" }) -join ', '
     Write-Host "Summary: $summary"
 
