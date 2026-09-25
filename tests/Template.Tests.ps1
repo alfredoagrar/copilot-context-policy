@@ -26,9 +26,10 @@ BeforeAll {
         Where-Object { $_ -and -not $_.StartsWith('#') })
     $excludesFile = $TemplatePath.Replace('\', '/')
 
+    # Paths go as arguments, not --stdin: Windows pipes CRLF to native commands and git
+    # would then match "path`r".
     $Matched = @{}
-    $paths |
-        & git -C $sandbox -c core.quotePath=false -c "core.excludesFile=$excludesFile" check-ignore --no-index --stdin --verbose --non-matching |
+    & git -C $sandbox -c core.quotePath=false -c "core.excludesFile=$excludesFile" check-ignore --no-index --verbose --non-matching -- $paths |
         ForEach-Object {
             $source, $path = $_ -split "`t", 2
             $Matched[$path] = $source
